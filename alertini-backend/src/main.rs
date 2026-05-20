@@ -1,25 +1,21 @@
-use axum::{Router, routing::{get, post}};
+use axum::{Router, routing::{get}};
+
+// imported modules
+mod api;
+
+
+// controllers 
+use api::auth_controller::AuthController; 
+
 
 #[tokio::main]
 async fn main() {
     let app = Router::new()
-        .route("/", get(root))
-        .route("/foo", get(get_foo) )
-        .route("/foo", post(post_foo));
+        .route("/", get(| | async { "Hello World "}))
+        .nest("/auth", AuthController::app());
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn root() -> &'static str {
-    return "Hello World";
-}
-
-async fn get_foo() -> &'static str {
-    return "Hello Foo";
-}
-
-async fn post_foo() -> &'static str {
-    return "Post Foo";
-}
 
 
