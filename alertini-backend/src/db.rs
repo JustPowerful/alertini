@@ -6,5 +6,7 @@ pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 pub fn create_pool(database_url: String) -> Pool {
     let manager = ConnectionManager::<PgConnection>::new(database_url);
 
-    r2d2::Pool::builder().build(manager).expect("Failed to create pool")
+    r2d2::Pool::builder()
+        .build(manager)
+        .expect("Failed to create pool")
 }

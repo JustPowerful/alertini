@@ -11,3 +11,4 @@ tokio = { version = "1.52.3", features = ["full"] }
 diesel = { version = "2.2.0", features = ["postgres", "r2d2", "uuid", "chrono"] }
 uuid = { version = "1.23.1", features = ["v4", "serde"] }
 chrono = { version = "0.4.44", features = ["serde"] }
+argon2 = { version = "0.5.3", features = ["std"] }
