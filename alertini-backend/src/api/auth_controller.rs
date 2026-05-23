@@ -7,7 +7,7 @@ use axum::{
     Json, Router, extract::State, http::StatusCode, routing::post
 };
 use chrono::{Duration, Utc};
-use diesel::{ExpressionMethods, RunQueryDsl, SelectableHelper, query_dsl::methods::FilterDsl};
+use diesel::{ExpressionMethods, OptionalExtension, RunQueryDsl, SelectableHelper, query_dsl::methods::FilterDsl};
 use jsonwebtoken::{EncodingKey, Header, encode};
 use serde::Serialize;
 
@@ -70,8 +70,21 @@ impl AuthController {
         State(pool): State<Pool>,
         Json(body): Json<NewUser>,
     ) -> (StatusCode, Json<ApiResponse<UserResponse>>) {
-        // Hash the password using Argon2
+        let pool_clone = pool.clone();
+        let mut conn = pool_clone.get().expect("Failed to get connection");
+
+        // We have to check if the email exists in the database
+        let existing_user = users::table
+            .filter(users::email.eq(&body.email))
+            .first::<User>(&mut conn)
+            .optional()
+            .expect("There was a problem in register.");
         
+        if existing_user.is_some() {
+            return (StatusCode::CONFLICT, Json(ApiResponse::error("User already exists.")));
+        }
+
+        // Hash the password using Argon2
         /*
          * We pass OsRng as a mutable reference because it's a stateful random number generator that needs to maintain internal state.
          * It's like making a function that takes a mutable reference to a random number generator, so it can generate random numbers and update its internal state accordingly.
@@ -90,10 +103,8 @@ impl AuthController {
             password: password_hash    
         };
 
-        let pool_clone = pool.clone();
         let user_data_clone = user_data;
         
-        let mut conn = pool_clone.get().expect("Failed to get connection");
         let user: User = diesel::insert_into(users::table)
             .values(user_data_clone)
             .returning(User::as_returning())
