@@ -4,9 +4,7 @@ use argon2::{
 };
 // use PasswordHash, PasswordVerifier, to verify the password later
 use axum::{
-    Json, Router,
-    extract::State,
-    routing::{post},
+    Json, Router, extract::State, http::StatusCode, routing::post
 };
 use chrono::{Duration, Utc};
 use diesel::{ExpressionMethods, RunQueryDsl, SelectableHelper, query_dsl::methods::FilterDsl};
@@ -18,14 +16,10 @@ use crate::{
     models::user::{LoginUser, NewUser, User, UserResponse},
     schema::users,
 };
-pub struct AuthController;
 
-#[derive(Serialize)]
-pub struct JsonResponse<T> {
-    success: bool,
-    message: String,
-    data: T,
-}
+use crate::responses::api_response::ApiResponse;
+
+pub struct AuthController;
 
 #[derive(Serialize)]
 pub struct Claims {
@@ -45,7 +39,7 @@ impl AuthController {
         .route("/login", post(Self::login))
     }
 
-    pub async fn login(State(pool): State<Pool>, Json(body): Json<LoginUser>) -> Json<JsonResponse<LoginResponse>> {
+    pub async fn login(State(pool): State<Pool>, Json(body): Json<LoginUser>) -> (StatusCode, Json<ApiResponse<LoginResponse>>) {
         let mut conn = pool.get().expect("There was a problem getting the database pool.");
         let user: User = users::table.filter(users::email.eq(body.email)).first::<User>(&mut conn)
             .expect("User not found");
@@ -54,11 +48,7 @@ impl AuthController {
         let is_valid = Argon2::default().verify_password(body.password.as_bytes(), &parsed_hash).is_ok();
 
         if !is_valid {
-            return Json(JsonResponse {
-                success: false,
-                message: String::from("Invalid email or password."),
-                data: LoginResponse { token: String::new() }
-            });
+            return (StatusCode::UNAUTHORIZED, Json(ApiResponse::error("Invalid email or password")))
         }
         
         
@@ -73,17 +63,13 @@ impl AuthController {
         let secret = std::env::var("JWT_SECRET_KEY").expect("There's not JWT_SECRET_KEY, please define it.");
         let token = encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_bytes())).expect("Error encoding the JWT token");
         
-        Json(JsonResponse {
-            success: true,
-            message: String::from("Successfully logged in."),
-            data: LoginResponse { token }
-        })
+        return (StatusCode::OK, Json(ApiResponse::success("Successfully logged in", LoginResponse {token})))
     }
 
     pub async fn register(
         State(pool): State<Pool>,
         Json(body): Json<NewUser>,
-    ) -> Json<JsonResponse<UserResponse>> {
+    ) -> (StatusCode, Json<ApiResponse<UserResponse>>) {
         // Hash the password using Argon2
         
         /*
@@ -114,16 +100,12 @@ impl AuthController {
             .get_result(&mut conn)
         .expect("There was a problem inserting the user!");
 
-        Json(JsonResponse {
-            success: true,
-            message: String::from("Successfully registered!"),
-            data: UserResponse {
+        return (StatusCode::OK, Json(ApiResponse::success("Successfully registered your account.", UserResponse {
                 id: user.id,
                 firstname: user.firstname,
                 lastname: user.lastname,
                 email: user.email,
                 created_at: user.created_at,
-            },
-        })
+            })));
     }
 }

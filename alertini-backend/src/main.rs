@@ -5,6 +5,7 @@ mod api;
 mod db;
 mod models;
 mod schema;
+mod responses;
 
 // controllers
 use api::auth_controller::AuthController;
