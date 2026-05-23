@@ -25,6 +25,14 @@ pub struct NewUser {
     pub password: String,
 }
 
+#[derive(Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = users)]
+pub struct LoginUser {
+    pub email: String,
+    pub password: String
+}
+
+
 // Response type user
 #[derive(Serialize)]
 pub struct UserResponse {
