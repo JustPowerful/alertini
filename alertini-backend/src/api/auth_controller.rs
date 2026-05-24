@@ -2,30 +2,26 @@ use argon2::{
     Argon2,
     password_hash::{ PasswordHash, PasswordVerifier, PasswordHasher, SaltString, rand_core::OsRng},
 };
+
 // use PasswordHash, PasswordVerifier, to verify the password later
 use axum::{
     Json, Router, extract::State, http::StatusCode, routing::post
 };
+
 use chrono::{Duration, Utc};
 use diesel::{ExpressionMethods, OptionalExtension, RunQueryDsl, SelectableHelper, query_dsl::methods::FilterDsl};
 use jsonwebtoken::{EncodingKey, Header, encode};
 use serde::Serialize;
 
 use crate::{
-    db::Pool,
-    models::user::{LoginUser, NewUser, User, UserResponse},
-    schema::users,
+    db::Pool, common::claims::Claims, models::user::{LoginUser, NewUser, User, UserResponse}, schema::users
 };
 
 use crate::responses::api_response::ApiResponse;
 
 pub struct AuthController;
 
-#[derive(Serialize)]
-pub struct Claims {
-    sub: String,
-    exp: usize,
-}
+
 
 #[derive(Serialize)]
 pub struct LoginResponse {
