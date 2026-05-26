@@ -16,8 +16,11 @@ diesel::table! {
         id -> Uuid,
         license_plate -> Text,
         car_desc -> Nullable<Text>,
+        user_id -> Uuid,
         created_at -> Nullable<Timestamp>,
     }
 }
+
+diesel::joinable!(vehicles -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(users, vehicles,);
