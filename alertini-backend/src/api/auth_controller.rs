@@ -99,10 +99,8 @@ impl AuthController {
             password: password_hash    
         };
 
-        let user_data_clone = user_data;
-        
         let user: User = diesel::insert_into(users::table)
-            .values(user_data_clone)
+            .values(user_data)
             .returning(User::as_returning())
             .get_result(&mut conn)
         .expect("There was a problem inserting the user!");

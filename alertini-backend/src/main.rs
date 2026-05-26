@@ -23,13 +23,12 @@ async fn main() {
     // Inside every route
     // You can create a protected route, you can use the following
     // route_layer(middleware::from_fn(auth_middleware))
-    
-
     let app = Router::new()
         .route("/", get(|| async { "Hello World " }))
         .nest("/vehicle", VehicleController::app())
         .nest("/auth", AuthController::app())
         .with_state(pool);
+    
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
