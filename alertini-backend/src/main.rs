@@ -2,17 +2,19 @@ use axum::{Router, routing::get};
 
 // imported modules
 mod api;
-mod db;
-mod models;
-mod schema;
-mod responses;
-mod middleware;
 mod common;
+mod db;
+mod middleware;
+mod models;
+mod responses;
+mod schema;
 
 // controllers
 use api::auth_controller::AuthController;
 use api::vehicle_controller::VehicleController;
 use db::create_pool;
+
+use crate::api::alert_controller::AlertController;
 
 #[tokio::main]
 async fn main() {
@@ -27,8 +29,9 @@ async fn main() {
         .route("/", get(|| async { "Hello World " }))
         .nest("/vehicle", VehicleController::app())
         .nest("/auth", AuthController::app())
+        .nest("/alert", AlertController::app())
         .with_state(pool);
-    
+
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }

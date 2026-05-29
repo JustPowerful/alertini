@@ -4,7 +4,7 @@ use serde::Serialize;
 pub struct ApiResponse<T> {
     success: bool,
     message: String,
-    data: Option<T>
+    data: Option<T>,
 }
 
 impl<T> ApiResponse<T> {
@@ -20,7 +20,7 @@ impl<T> ApiResponse<T> {
         Self {
             success: false,
             message: message.to_string(),
-            data: None
+            data: None,
         }
     }
 }

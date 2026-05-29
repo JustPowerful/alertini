@@ -29,9 +29,8 @@ pub struct NewUser {
 #[diesel(table_name = users)]
 pub struct LoginUser {
     pub email: String,
-    pub password: String
+    pub password: String,
 }
-
 
 // Response type user
 #[derive(Serialize)]
