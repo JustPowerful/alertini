@@ -1,7 +1,7 @@
 use diesel::prelude::Insertable;
+use diesel::{Associations, Queryable, Selectable};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use diesel::{Queryable, Selectable, Associations};
-use serde::{Deserialize,Serialize};
 
 use crate::models::user::User;
 use crate::models::vehicle::Vehicle;
@@ -31,4 +31,10 @@ pub struct NewAlert {
 pub struct NewAlertPayload {
     pub license_plate: String,
     pub note: String,
+}
+
+
+#[derive(Deserialize)]
+pub struct GetVehicleAlertPayload {
+    pub license_plate: String,
 }
