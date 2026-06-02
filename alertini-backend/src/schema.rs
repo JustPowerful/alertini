@@ -1,6 +1,15 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    alerts (id) {
+        id -> Uuid,
+        car_id -> Uuid,
+        note -> Text,
+        reporter_id -> Uuid,
+    }
+}
+
+diesel::table! {
     users (id) {
         id -> Uuid,
         firstname -> Text,
@@ -21,6 +30,8 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(alerts -> users (reporter_id));
+diesel::joinable!(alerts -> vehicles (car_id));
 diesel::joinable!(vehicles -> users (user_id));
 
-diesel::allow_tables_to_appear_in_same_query!(users, vehicles,);
+diesel::allow_tables_to_appear_in_same_query!(alerts, users, vehicles,);
