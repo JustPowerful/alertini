@@ -78,11 +78,14 @@ pub enum ClientMessage {
 impl AlertController {
     pub fn app() -> Router<Pool> {
         let protected_routes = Router::new()
-            .route("/ws", get(Self::ws_handler))
             .route("/list", get(Self::list_alerts))
             .route_layer(middleware::from_fn(auth_middleware));
 
-        Router::new().merge(protected_routes)
+        // WebSocket route is not protected by middleware - auth happens in the handler
+        let public_routes = Router::new()
+            .route("/ws", get(Self::ws_handler));
+
+        Router::new().merge(protected_routes).merge(public_routes)
     }
 
     // Normal HTTP handlers 
@@ -120,27 +123,13 @@ impl AlertController {
     }
 
     // Websocket handlers
-    async fn handle_socket(mut socket: WebSocket, state: Pool, claims: Claims) {
-        let user_uuid = match Uuid::from_str(&claims.sub) {
-            Ok(uuid) => uuid,
-            Err(_) => {
-                let _ = socket
-                    .send(Message::Text(
-                        serde_json::to_string(&ServerMessage::Error {
-                            message: "Invalid user id in token".to_string(),
-                        })
-                        .unwrap()
-                        .into(),
-                    ))
-                    .await;
-                return;
-            }
-        };
-
+    async fn handle_socket(mut socket: WebSocket, state: Pool) {
         let connection_id = Uuid::new_v4();
         let hub = WsHub::global();
         let (tx, mut rx) = mpsc::unbounded_channel::<Message>();
         let mut subscriptions = HashSet::<String>::new();
+        let mut user_uuid: Option<Uuid> = None;
+        let mut authenticated = false;
 
         let _ = tx.send(Message::Text(
             serde_json::to_string(&ServerMessage::Info {
@@ -160,42 +149,97 @@ impl AlertController {
                 incoming = socket.recv() => {
                     match incoming {
                         Some(Ok(Message::Text(text))) => {
-                            let payload = serde_json::from_str::<ClientMessage>(text.as_str());
-                            match payload {
-                                Ok(ClientMessage::Subscribe { license_plate }) => {
-                                    if let Err(message) = Self::subscribe_to_plate(&state, hub, &tx, connection_id, user_uuid, &license_plate).await {
-                                        let _ = tx.send(Message::Text(
-                                            serde_json::to_string(&ServerMessage::Error { message }).unwrap().into(),
-                                        ));
-                                    } else {
-                                        subscriptions.insert(license_plate.clone());
-                                        let _ = tx.send(Message::Text(
-                                            serde_json::to_string(&ServerMessage::Subscribed { license_plate }).unwrap().into(),
-                                        ));
+                            // Try to parse as a generic JSON message first to check for auth action
+                            if !authenticated {
+                                if let Ok(serde_json::Value::Object(obj)) = serde_json::from_str::<serde_json::Value>(text.as_str()) {
+                                    if let Some(action) = obj.get("action").and_then(|v| v.as_str()) {
+                                        if action == "auth" {
+                                            if let Some(token) = obj.get("token").and_then(|v| v.as_str()) {
+                                                let secret = std::env::var("JWT_SECRET_KEY")
+                                                    .unwrap_or_default();
+                                                match jsonwebtoken::decode::<Claims>(
+                                                    token,
+                                                    &jsonwebtoken::DecodingKey::from_secret(secret.as_bytes()),
+                                                    &jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256),
+                                                ) {
+                                                    Ok(token_data) => {
+                                                        if let Ok(uuid) = Uuid::from_str(&token_data.claims.sub) {
+                                                            user_uuid = Some(uuid);
+                                                            authenticated = true;
+                                                            let _ = tx.send(Message::Text(
+                                                                serde_json::to_string(&ServerMessage::Info {
+                                                                    message: "Authenticated successfully".to_string(),
+                                                                })
+                                                                .unwrap()
+                                                                .into(),
+                                                            ));
+                                                        }
+                                                    }
+                                                    Err(_) => {
+                                                        let _ = tx.send(Message::Text(
+                                                            serde_json::to_string(&ServerMessage::Error {
+                                                                message: "Invalid token".to_string(),
+                                                            })
+                                                            .unwrap()
+                                                            .into(),
+                                                        ));
+                                                    }
+                                                }
+                                            }
+                                            continue;
+                                        }
                                     }
                                 }
-                                Ok(ClientMessage::Alert { license_plate, message }) => {
-                                    match Self::create_alert_and_notify(&state, hub, user_uuid, &license_plate, &message).await {
-                                        Ok(alert) => {
-                                            let _ = tx.send(Message::Text(
-                                                serde_json::to_string(&ServerMessage::AlertCreated { alert }).unwrap().into(),
-                                            ));
-                                        }
-                                        Err(message) => {
+                                // Not authenticated and didn't receive valid auth message
+                                let _ = tx.send(Message::Text(
+                                    serde_json::to_string(&ServerMessage::Error {
+                                        message: "Authentication required".to_string(),
+                                    })
+                                    .unwrap()
+                                    .into(),
+                                ));
+                                break;
+                            }
+
+                            // Process messages only if authenticated
+                            if let Some(uuid) = user_uuid {
+                                let payload = serde_json::from_str::<ClientMessage>(text.as_str());
+                                match payload {
+                                    Ok(ClientMessage::Subscribe { license_plate }) => {
+                                        if let Err(message) = Self::subscribe_to_plate(&state, hub, &tx, connection_id, uuid, &license_plate).await {
                                             let _ = tx.send(Message::Text(
                                                 serde_json::to_string(&ServerMessage::Error { message }).unwrap().into(),
                                             ));
+                                        } else {
+                                            subscriptions.insert(license_plate.clone());
+                                            let _ = tx.send(Message::Text(
+                                                serde_json::to_string(&ServerMessage::Subscribed { license_plate }).unwrap().into(),
+                                            ));
                                         }
                                     }
-                                }
-                                Err(_) => {
-                                    let _ = tx.send(Message::Text(
-                                        serde_json::to_string(&ServerMessage::Error {
-                                            message: "Invalid websocket payload".to_string(),
-                                        })
-                                        .unwrap()
-                                        .into(),
-                                    ));
+                                    Ok(ClientMessage::Alert { license_plate, message }) => {
+                                        match Self::create_alert_and_notify(&state, hub, uuid, &license_plate, &message).await {
+                                            Ok(alert) => {
+                                                let _ = tx.send(Message::Text(
+                                                    serde_json::to_string(&ServerMessage::AlertCreated { alert }).unwrap().into(),
+                                                ));
+                                            }
+                                            Err(message) => {
+                                                let _ = tx.send(Message::Text(
+                                                    serde_json::to_string(&ServerMessage::Error { message }).unwrap().into(),
+                                                ));
+                                            }
+                                        }
+                                    }
+                                    Err(_) => {
+                                        let _ = tx.send(Message::Text(
+                                            serde_json::to_string(&ServerMessage::Error {
+                                                message: "Invalid websocket payload".to_string(),
+                                            })
+                                            .unwrap()
+                                            .into(),
+                                        ));
+                                    }
                                 }
                             }
                         }
@@ -222,13 +266,11 @@ impl AlertController {
     pub async fn ws_handler(
         ws: WebSocketUpgrade,
         State(_pool): State<Pool>,
-        Extension(claims): Extension<Claims>,
     ) -> impl IntoResponse {
         let pool = _pool.clone();
         ws.on_upgrade(move |socket| async move {
             println!("New websocket connection established!");
-            println!("The established user ID is: {}", claims.sub);
-            Self::handle_socket(socket, pool, claims).await;
+            Self::handle_socket(socket, pool).await;
         })
     }
 
@@ -263,6 +305,11 @@ impl AlertController {
             .entry(license_plate.to_string())
             .or_insert_with(DashMap::new);
         subscriber_map.insert(connection_id, tx.clone());
+
+        println!("WS: user {} subscribed connection {} to {}", user_uuid, connection_id, license_plate);
+        // log current subscriber count for this plate
+        let count = subscriber_map.len();
+        println!("WS: current subscribers for {} = {}", license_plate, count);
 
         Ok(())
     }
@@ -307,24 +354,24 @@ impl AlertController {
             })
             .map_err(|_| "Failed to serialize alert notification".to_string())?;
 
-            let dead_connections: Vec<Uuid> = subscribers
-                .iter()
-                .filter_map(|entry| {
-                    if entry
-                        .value()
-                        .send(Message::Text(payload.clone().into()))
-                        .is_err()
-                    {
-                        Some(*entry.key())
-                    } else {
-                        None
-                    }
-                })
-                .collect();
+            let subscriber_count = subscribers.len();
+            println!("WS: notifying {} subscribers for plate {}", subscriber_count, license_plate);
+
+            let mut dead_connections: Vec<Uuid> = Vec::new();
+            for entry in subscribers.iter() {
+                let conn_id = *entry.key();
+                let sender = entry.value();
+                if sender.send(Message::Text(payload.clone().into())).is_err() {
+                    println!("WS: failed to send to connection {} for plate {}", conn_id, license_plate);
+                    dead_connections.push(conn_id);
+                }
+            }
 
             for connection_id in dead_connections {
                 subscribers.remove(&connection_id);
             }
+        } else {
+            println!("WS: no subscribers for plate {}", license_plate);
         }
 
         Ok(alert)

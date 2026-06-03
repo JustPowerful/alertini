@@ -1,4 +1,5 @@
 use axum::{Router, routing::get};
+use tower_http::cors::CorsLayer;
 
 // imported modules
 mod api;
@@ -30,7 +31,8 @@ async fn main() {
         .nest("/vehicle", VehicleController::app())
         .nest("/auth", AuthController::app())
         .nest("/alert", AlertController::app())
-        .with_state(pool);
+        .with_state(pool)
+        .layer(CorsLayer::permissive());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();

@@ -15,3 +15,4 @@ chrono = { version = "0.4.44", features = ["serde"] }
 argon2 = { version = "0.5.3", features = ["std"] }
 jsonwebtoken = { version = "10.4.0", features = ["rust_crypto"] }
 dashmap = "6.2.1"
+tower-http = { version = "0.6.11", features = ["cors"] }
