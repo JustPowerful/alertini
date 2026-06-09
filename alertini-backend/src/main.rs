@@ -43,13 +43,13 @@ use utoipauto::utoipauto;
     ),
     modifiers(&SecurityAddon)
 )]
-pub struct ApiDoc;
+pub struct ApiDoc;                                
 
 #[tokio::main]
 async fn main() {
     dotenvy::dotenv().ok(); // initialize the dotenv variables from .env file
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let pool = create_pool(database_url);
+    let (_, pool) = create_pool().await;
+    
 
     // Inside every route
     // You can create a protected route, you can use the following
