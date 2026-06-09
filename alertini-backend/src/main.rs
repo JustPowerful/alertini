@@ -16,6 +16,7 @@ use api::vehicle_controller::VehicleController;
 use db::create_pool;
 
 use crate::api::alert_controller::AlertController;
+use crate::api::health_controller::HealthController;
 
 #[tokio::main]
 async fn main() {
@@ -31,6 +32,7 @@ async fn main() {
         .nest("/vehicle", VehicleController::app())
         .nest("/auth", AuthController::app())
         .nest("/alert", AlertController::app())
+        .nest("/health", HealthController::app())
         .with_state(pool)
         .layer(CorsLayer::permissive());
 
