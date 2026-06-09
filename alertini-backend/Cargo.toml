@@ -16,3 +16,6 @@ argon2 = { version = "0.5.3", features = ["std"] }
 jsonwebtoken = { version = "10.4.0", features = ["rust_crypto"] }
 dashmap = "6.2.1"
 tower-http = { version = "0.6.11", features = ["cors"] }
+utoipa = { version = "5.5.0", features = ["axum_extras", "macros", "uuid", "chrono"] }
+utoipa-swagger-ui = {version = "9.0.2", features = ["axum"]}
+utoipauto = "0.3.0-alpha.2"

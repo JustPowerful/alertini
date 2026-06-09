@@ -10,13 +10,42 @@ mod models;
 mod responses;
 mod schema;
 
+use common::addons::utoipa_auth_addon::SecurityAddon;
+
 // controllers
 use api::auth_controller::AuthController;
 use api::vehicle_controller::VehicleController;
 use db::create_pool;
 
+
 use crate::api::alert_controller::AlertController;
 use crate::api::health_controller::HealthController;
+
+use utoipauto::utoipauto;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
+
+// SwaggerUI Documentation for the API
+#[utoipauto(paths = "./src/api")]
+#[derive(OpenApi)]
+#[openapi(
+    components(
+        schemas(crate::models::vehicle::Vehicle,
+            crate::models::vehicle::NewVehiclePayload,
+            crate::models::user::User,
+            crate::models::user::UserResponse,
+            crate::models::user::LoginUser,
+            crate::models::user::NewUser,
+            crate::models::alert::Alert,
+            crate::models::alert::NewAlert,
+            crate::models::alert::NewAlertPayload,
+            crate::models::alert::GetVehicleAlertPayload,
+        )
+    ),
+    modifiers(&SecurityAddon)
+)]
+pub struct ApiDoc;
+
 
 #[tokio::main]
 async fn main() {
@@ -34,7 +63,8 @@ async fn main() {
         .nest("/alert", AlertController::app())
         .nest("/health", HealthController::app())
         .with_state(pool)
-        .layer(CorsLayer::permissive());
+        .layer(CorsLayer::permissive())
+        .merge(SwaggerUi::new("/docs").url("/api-doc/openapi.json", ApiDoc::openapi()));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();

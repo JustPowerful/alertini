@@ -19,9 +19,18 @@ pub struct HealthState {
 impl HealthController {
     pub fn app() -> Router<Pool> {
         Router::new()
-            .route("/", get(Self::root))
+            .route("/", get(root))
     }
+}
 
+    #[utoipa::path(
+        get,
+        path = "/health",
+        tag = "Health",
+        responses(
+            (status = 200, description = "Service health status for all subsystems")
+        )
+    )]
     pub async fn root() -> (StatusCode, Json<ApiResponse<HealthState>>){
         // Verify the health the database connection and SQL request, do something like "SELECT 1"
         let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
@@ -33,15 +42,14 @@ impl HealthController {
             .is_ok();
 
 
-        let auth_service = AuthController::health(&pool).await;
-        let vehicle_service = VehicleController::health(&pool).await;
-        let alert_service = AlertController::health(&pool).await;
-        
-        (StatusCode::OK, Json(ApiResponse::success("Fetched service health data.", HealthState {
-            alert_service,
-            auth_service,
-            vehicle_service,
-            db_service,
-        })))
+    let auth_service = AuthController::health(&pool).await;
+    let vehicle_service = VehicleController::health(&pool).await;
+    let alert_service = AlertController::health(&pool).await;
+    
+    (StatusCode::OK, Json(ApiResponse::success("Fetched service health data.", HealthState {
+        alert_service,
+        auth_service,
+        vehicle_service,
+        db_service,
+    })))
     }
-}

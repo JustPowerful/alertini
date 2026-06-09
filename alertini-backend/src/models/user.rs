@@ -1,11 +1,12 @@
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use utoipa::ToSchema;
 
 use chrono::NaiveDateTime;
 
 use crate::schema::users;
-#[derive(Queryable, Selectable, Serialize)]
+#[derive(Queryable, Selectable, Serialize, ToSchema)]
 #[diesel(table_name = users)]
 pub struct User {
     pub id: Uuid,
@@ -16,7 +17,7 @@ pub struct User {
     pub created_at: Option<NaiveDateTime>,
 }
 
-#[derive(Insertable, Deserialize)]
+#[derive(Insertable, Deserialize, ToSchema)]
 #[diesel(table_name = users)]
 pub struct NewUser {
     pub firstname: String,
@@ -25,7 +26,7 @@ pub struct NewUser {
     pub password: String,
 }
 
-#[derive(Queryable, Selectable, Serialize, Deserialize)]
+#[derive(Queryable, Selectable, Serialize, Deserialize, ToSchema)]
 #[diesel(table_name = users)]
 pub struct LoginUser {
     pub email: String,
@@ -33,7 +34,7 @@ pub struct LoginUser {
 }
 
 // Response type user
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct UserResponse {
     pub id: Uuid,
     pub firstname: String,
