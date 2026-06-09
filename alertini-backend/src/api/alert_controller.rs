@@ -5,25 +5,35 @@ use std::{
 };
 
 use axum::{
-    Json, Router, extract::{
+    Json, Router,
+    extract::{
         Extension, State, WebSocketUpgrade,
         ws::{Message, WebSocket},
-    }, http::StatusCode, middleware, response::IntoResponse, routing::get
+    },
+    http::StatusCode,
+    middleware,
+    response::IntoResponse,
+    routing::get,
 };
 use dashmap::DashMap;
 use diesel::{
-    BoolExpressionMethods, ExpressionMethods, OptionalExtension, RunQueryDsl,
-    SelectableHelper, query_dsl::methods::FilterDsl,
+    BoolExpressionMethods, ExpressionMethods, OptionalExtension, RunQueryDsl, SelectableHelper,
+    query_dsl::methods::FilterDsl,
 };
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use crate::{
-    common::claims::Claims, db::Pool, middleware::auth_middleware::auth_middleware, models::{
+    common::claims::Claims,
+    db::Pool,
+    middleware::auth_middleware::auth_middleware,
+    models::{
         alert::{Alert, GetVehicleAlertPayload, NewAlert},
         vehicle::Vehicle,
-    }, responses::api_response::ApiResponse, schema::{alerts, vehicles}
+    },
+    responses::api_response::ApiResponse,
+    schema::{alerts, vehicles},
 };
 
 pub struct AlertController;
@@ -80,8 +90,7 @@ impl AlertController {
             .route_layer(middleware::from_fn(auth_middleware));
 
         // WebSocket route is not protected by middleware - auth happens in the handler
-        let public_routes = Router::new()
-            .route("/ws", get(ws_handler));
+        let public_routes = Router::new().route("/ws", get(ws_handler));
 
         Router::new().merge(protected_routes).merge(public_routes)
     }
@@ -130,11 +139,20 @@ pub async fn list_alerts(
                 .filter(alerts::car_id.eq(vehicle.id))
                 .load::<Alert>(&mut conn)
                 .expect("There's a problem with fetching vehicle alerts.");
-            (StatusCode::OK, Json(ApiResponse::success("Successfully loaded vehicle notifications", alerts)))
+            (
+                StatusCode::OK,
+                Json(ApiResponse::success(
+                    "Successfully loaded vehicle notifications",
+                    alerts,
+                )),
+            )
         }
-        None => {
-            (StatusCode::FORBIDDEN, Json(ApiResponse::error("You cannot see the alerts of this vehicle.")))
-        }
+        None => (
+            StatusCode::FORBIDDEN,
+            Json(ApiResponse::error(
+                "You cannot see the alerts of this vehicle.",
+            )),
+        ),
     }
 }
 
@@ -286,10 +304,7 @@ async fn handle_socket(mut socket: WebSocket, state: Pool) {
         (status = 101, description = "WebSocket upgrade — send {\"action\":\"auth\",\"token\":\"<JWT>\"} first, then subscribe/alert messages"),
     )
 )]
-pub async fn ws_handler(
-    ws: WebSocketUpgrade,
-    State(_pool): State<Pool>,
-) -> impl IntoResponse {
+pub async fn ws_handler(ws: WebSocketUpgrade, State(_pool): State<Pool>) -> impl IntoResponse {
     let pool = _pool.clone();
     ws.on_upgrade(move |socket| async move {
         println!("New websocket connection established!");
@@ -329,7 +344,10 @@ async fn subscribe_to_plate(
         .or_insert_with(DashMap::new);
     subscriber_map.insert(connection_id, tx.clone());
 
-    println!("WS: user {} subscribed connection {} to {}", user_uuid, connection_id, license_plate);
+    println!(
+        "WS: user {} subscribed connection {} to {}",
+        user_uuid, connection_id, license_plate
+    );
     let count = subscriber_map.len();
     println!("WS: current subscribers for {} = {}", license_plate, count);
 
@@ -377,14 +395,20 @@ async fn create_alert_and_notify(
         .map_err(|_| "Failed to serialize alert notification".to_string())?;
 
         let subscriber_count = subscribers.len();
-        println!("WS: notifying {} subscribers for plate {}", subscriber_count, license_plate);
+        println!(
+            "WS: notifying {} subscribers for plate {}",
+            subscriber_count, license_plate
+        );
 
         let mut dead_connections: Vec<Uuid> = Vec::new();
         for entry in subscribers.iter() {
             let conn_id = *entry.key();
             let sender = entry.value();
             if sender.send(Message::Text(payload.clone().into())).is_err() {
-                println!("WS: failed to send to connection {} for plate {}", conn_id, license_plate);
+                println!(
+                    "WS: failed to send to connection {} for plate {}",
+                    conn_id, license_plate
+                );
                 dead_connections.push(conn_id);
             }
         }

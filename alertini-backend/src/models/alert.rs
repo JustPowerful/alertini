@@ -1,8 +1,8 @@
 use diesel::prelude::Insertable;
 use diesel::{Associations, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 use crate::models::user::User;
 use crate::models::vehicle::Vehicle;
@@ -33,7 +33,6 @@ pub struct NewAlertPayload {
     pub license_plate: String,
     pub note: String,
 }
-
 
 #[derive(Deserialize, ToSchema)]
 pub struct GetVehicleAlertPayload {

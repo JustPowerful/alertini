@@ -17,13 +17,12 @@ use api::auth_controller::AuthController;
 use api::vehicle_controller::VehicleController;
 use db::create_pool;
 
-
 use crate::api::alert_controller::AlertController;
 use crate::api::health_controller::HealthController;
 
-use utoipauto::utoipauto;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
+use utoipauto::utoipauto;
 
 // SwaggerUI Documentation for the API
 #[utoipauto(paths = "./src/api")]
@@ -45,7 +44,6 @@ use utoipa_swagger_ui::SwaggerUi;
     modifiers(&SecurityAddon)
 )]
 pub struct ApiDoc;
-
 
 #[tokio::main]
 async fn main() {

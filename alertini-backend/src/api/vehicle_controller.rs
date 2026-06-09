@@ -64,7 +64,10 @@ pub async fn get_all_vehicles(
         .expect("Failed to load vehicles");
     (
         StatusCode::OK,
-        Json(ApiResponse::success("Vehicles retrieved successfully.", vehicles)),
+        Json(ApiResponse::success(
+            "Vehicles retrieved successfully.",
+            vehicles,
+        )),
     )
 }
 
@@ -100,7 +103,10 @@ pub async fn create_vehicle(
 
     (
         StatusCode::OK,
-        Json(ApiResponse::success("Successfully registered your account.", vehicle)),
+        Json(ApiResponse::success(
+            "Successfully registered your account.",
+            vehicle,
+        )),
     )
 }
 
@@ -148,19 +154,21 @@ pub async fn update_vehicle(
         );
     }
 
-    let vehicle: Vehicle =
-        diesel::update(vehicles::table.filter(vehicles::id.eq(vehicle_uuid)))
-            .set((
-                vehicles::license_plate.eq(&body.license_plate),
-                vehicles::car_desc.eq(&body.car_desc),
-            ))
-            .returning(Vehicle::as_returning())
-            .get_result(&mut conn)
-            .expect("Failed to update vehicle");
+    let vehicle: Vehicle = diesel::update(vehicles::table.filter(vehicles::id.eq(vehicle_uuid)))
+        .set((
+            vehicles::license_plate.eq(&body.license_plate),
+            vehicles::car_desc.eq(&body.car_desc),
+        ))
+        .returning(Vehicle::as_returning())
+        .get_result(&mut conn)
+        .expect("Failed to update vehicle");
 
     (
         StatusCode::OK,
-        Json(ApiResponse::success("Vehicle updated successfully.", vehicle)),
+        Json(ApiResponse::success(
+            "Vehicle updated successfully.",
+            vehicle,
+        )),
     )
 }
 
@@ -206,13 +214,15 @@ pub async fn del_vehicle(
         );
     }
 
-    let vehicle: Vehicle =
-        diesel::delete(vehicles::table.filter(vehicles::id.eq(vehicle_uuid)))
-            .returning(Vehicle::as_returning())
-            .get_result(&mut conn)
-            .expect("Failed to delete vehicle");
+    let vehicle: Vehicle = diesel::delete(vehicles::table.filter(vehicles::id.eq(vehicle_uuid)))
+        .returning(Vehicle::as_returning())
+        .get_result(&mut conn)
+        .expect("Failed to delete vehicle");
     (
         StatusCode::OK,
-        Json(ApiResponse::success("Vehicle deleted successfully.", vehicle)),
+        Json(ApiResponse::success(
+            "Vehicle deleted successfully.",
+            vehicle,
+        )),
     )
 }

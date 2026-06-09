@@ -1,5 +1,5 @@
-use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::Modify;
+use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 
 // 1. Define the missing SecurityAddon struct
 pub struct SecurityAddon;

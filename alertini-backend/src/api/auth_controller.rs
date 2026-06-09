@@ -97,7 +97,10 @@ pub async fn login(
 
     return (
         StatusCode::OK,
-        Json(ApiResponse::success("Successfully logged in", LoginResponse { token })),
+        Json(ApiResponse::success(
+            "Successfully logged in",
+            LoginResponse { token },
+        )),
     );
 }
 
