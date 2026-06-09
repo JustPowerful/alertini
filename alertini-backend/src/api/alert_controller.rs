@@ -88,6 +88,10 @@ impl AlertController {
         Router::new().merge(protected_routes).merge(public_routes)
     }
 
+    pub async fn health(pool: &Pool) -> bool {
+        pool.get().is_ok()
+    }
+
     // Normal HTTP handlers 
     pub async fn list_alerts(State(pool): State<Pool>,
         Extension(claims): Extension<Claims>,

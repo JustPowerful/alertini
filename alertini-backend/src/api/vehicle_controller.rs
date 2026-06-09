@@ -38,6 +38,11 @@ impl VehicleController {
         Router::new().merge(protected_routes)
     }
 
+    pub async fn health(pool: &Pool) -> bool {
+        // Check if the database connection is valid
+        pool.get().is_ok()
+    }
+
     pub async fn get_all_vehicles(
         State(pool): State<Pool>,
         Extension(claims): Extension<Claims>,

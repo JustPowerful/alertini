@@ -2,7 +2,7 @@ use axum::{Json, Router, http::StatusCode, routing::get};
 use diesel::{r2d2::{ConnectionManager}, PgConnection, RunQueryDsl};
 
 
-use crate::{db::Pool, responses::api_response::ApiResponse};
+use crate::{api::{alert_controller::AlertController, auth_controller::AuthController, vehicle_controller::VehicleController}, db::Pool, responses::api_response::ApiResponse};
 use serde::Serialize;
 
 
@@ -32,10 +32,15 @@ impl HealthController {
             .first::<i32>(&mut conn)
             .is_ok();
 
+
+        let auth_service = AuthController::health(&pool).await;
+        let vehicle_service = VehicleController::health(&pool).await;
+        let alert_service = AlertController::health(&pool).await;
+        
         (StatusCode::OK, Json(ApiResponse::success("Fetched service health data.", HealthState {
-            alert_service: true,
-            auth_service: true,
-            vehicle_service: true,
+            alert_service,
+            auth_service,
+            vehicle_service,
             db_service,
         })))
     }

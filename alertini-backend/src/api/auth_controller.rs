@@ -37,6 +37,15 @@ impl AuthController {
             .route("/login", post(Self::login))
     }
 
+    // Initial health checking
+    pub async fn health(pool: &Pool) -> bool  {
+        let pool_valid = pool.get().is_ok();
+        let secret_valid = std::env::var("JWT_SECRET_KEY").is_ok();
+        
+        pool_valid && secret_valid
+        
+    }
+
     pub async fn login(
         State(pool): State<Pool>,
         Json(body): Json<LoginUser>,
