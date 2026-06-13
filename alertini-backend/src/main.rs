@@ -24,6 +24,8 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 use utoipauto::utoipauto;
 
+
+
 // SwaggerUI Documentation for the API
 #[utoipauto(paths = "./src/api")]
 #[derive(OpenApi)]
@@ -43,13 +45,29 @@ use utoipauto::utoipauto;
     ),
     modifiers(&SecurityAddon)
 )]
-pub struct ApiDoc;                                
+pub struct ApiDoc;         
+
+
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
 #[tokio::main]
 async fn main() {
     dotenvy::dotenv().ok(); // initialize the dotenv variables from .env file
+    // Get current present diesel SQL migrations 
     let (_, pool) = create_pool().await;
     
+    let environment = std::env::var("ENV").unwrap_or("production".to_string());
+
+    if environment == "production" {
+        println!("ENV: PRODUCTION ENVIRONMENT -- MIGRATING DATABASE");
+        pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
+
+        let mut conn = pool.get().expect("db connection failed");
+    
+        // Run database SQL migrations
+        conn.run_pending_migrations(MIGRATIONS)
+            .expect("Failed to run migrations");
+    }
 
     // Inside every route
     // You can create a protected route, you can use the following
